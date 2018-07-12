@@ -1,0 +1,59 @@
+service: agile-office-alexa-skill
+provider:
+  name: aws
+  profile: serverless
+  region: us-east-1
+  runtime: nodejs6.10
+  stage: dev
+functions:
+  intent-handlers:
+    handler: index.handler
+    events:
+      - alexaSkill: ${env:ALEXA_SKILL_ID}
+package:
+  individually: true
+plugins:
+  - serverless-alexa-skills
+  - serverless-webpack
+custom:
+  alexa:
+    vendorId: ${env:AMAZON_VENDOR_ID}
+    clientId: ${env:AMAZON_CLIENT_ID}
+    clientSecret: ${env:AMAZON_CLIENT_SECRET}
+    skills:
+      - id: ${env:ALEXA_SKILL_ID}
+        manifest:
+          publishingInformation:
+            locales:
+              en-US:
+                name: agile-office
+          apis:
+            custom:
+              endpoint:
+                uri: arn:aws:lambda:${self:provider.region}:${env:AWS_ACCOUNT_ID}:function:${self:service}-${self:provider.stage}-intent-handlers
+          manifestVersion: '1.0'
+        models:
+          en-US:
+            interactionModel:
+              languageModel:
+                invocationName: agile office
+                intents:
+                  - name: GetTemperatureIntent
+                    slots:
+                    - name: room
+                      type: Room
+                    samples:
+                     - 'What is the temperature in the {room}'
+                types:
+                  - name: Room
+                    values:
+                      - name:
+                          value: boardroom
+                      - name:
+                          value: kitchenette
+                          synonyms:
+                            - kitchen
+  webpack: ./config/webpack.config.js
+  webpackIncludeModules:
+    forceExclude:
+      - aws-sdk

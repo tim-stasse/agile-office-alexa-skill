@@ -1,0 +1,39 @@
+{
+  "name": "agile-office-alexa-skill",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "alexa-sdk": "^1.0.25",
+    "aws-sdk": "^2.167.0",
+    "lodash": "^4.17.4",
+    "request": "^2.83.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.0",
+    "babel-eslint": "^8.2.1",
+    "babel-loader": "^7.1.2",
+    "babel-plugin-transform-object-rest-spread": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
+    "env-cmd": "^8.0.2",
+    "eslint": "^4.15.0",
+    "eslint-loader": "^1.9.0",
+    "serverless": "1.28.0",
+    "serverless-alexa-skills": "^0.0.6",
+    "serverless-webpack": "^4.1.0",
+    "uglifyjs-webpack-plugin": "^1.1.2",
+    "webpack": "^3.9.1",
+    "webpack-node-externals": "^1.6.0"
+  },
+  "scripts": {
+    "package": "env-cmd ./config/config.env.js serverless package",
+    "deploy": "env-cmd ./config/config.env.js serverless deploy",
+    "auth": "env-cmd ./config/config.env.js serverless alexa auth",
+    "create": "env-cmd ./config/config.env.js serverless alexa create",
+    "delete": "env-cmd ./config/config.env.js serverless alexa delete",
+    "manifests": "env-cmd ./config/config.env.js serverless alexa manifests",
+    "models": "env-cmd ./config/config.env.js serverless alexa models",
+    "update": "env-cmd ./config/config.env.js serverless alexa update",
+    "build": "env-cmd ./config/config.env.js serverless alexa build"
+  }
+}
