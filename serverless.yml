@@ -44,6 +44,13 @@ custom:
                       type: Room
                     samples:
                      - 'What is the temperature in the {room}'
+                  - name: GetDevicesIntent
+                    slots:
+                    - name: sensor
+                      type: Sensor
+                    samples:
+                     - 'List the {sensor}'
+                     - 'Where are the {sensor}'
                 types:
                   - name: Room
                     values:
@@ -53,6 +60,14 @@ custom:
                           value: kitchenette
                           synonyms:
                             - kitchen
+                  - name: Sensor
+                    values:
+                      - name:
+                          value: motion sensor
+                      - name:
+                          value: temperature sensor
+                      - name: 
+                          value: humidity sensor               
   webpack: ./config/webpack.config.js
   webpackIncludeModules:
     forceExclude:
