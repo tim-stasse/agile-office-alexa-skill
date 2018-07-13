@@ -11,55 +11,95 @@ const HELP_MESSAGE = 'Computers are hard!';
 const HELP_REPROMPT = 'It works on my machine!';
 const STOP_MESSAGE = 'Ciao!';
 
-function officeInformationRequest(endpoint, callback) {
-  https
-    .get('https://fedex-sensor-api.staging.agiledigital.co' + endpoint, res => {
-      const statusCode = res.statusCode;
-      const contentType = res.headers['content-type'];
+function officeInformationRequest(endpoint) {
+  return new Promise((resolve, reject) => {
+    https
+      .get(
+        'https://fedex-sensor-api.staging.agiledigital.co' + endpoint,
+        res => {
+          const statusCode = res.statusCode;
+          const contentType = res.headers['content-type'];
 
-      let error;
-      if (statusCode !== 200) {
-        error = new Error('Request Failed.\n' + `Status Code: ${statusCode}`);
-      } else if (!/^application\/json/.test(contentType)) {
-        error = new Error(
-          'Invalid content-type.\n' +
-            `Expected application/json but received ${contentType}`
-        );
-      }
-      if (error) {
-        console.log(error.message);
-        // consume response data to free up memory
-        res.resume();
-        return;
-      }
+          let error;
+          if (statusCode !== 200) {
+            error = new Error(
+              'Request Failed.\n' + `Status Code: ${statusCode}`
+            );
+          } else if (!/^application\/json/.test(contentType)) {
+            error = new Error(
+              'Invalid content-type.\n' +
+                `Expected application/json but received ${contentType}`
+            );
+          }
+          if (error) {
+            console.log(error.message);
+            // consume response data to free up memory
+            res.resume();
+            reject(error);
+          }
 
-      res.setEncoding('utf8');
-      let rawData = '';
-      res.on('data', chunk => (rawData += chunk));
-      res.on('end', () => {
-        try {
-          callback(rawData);
-        } catch (e) {
-          console.log(e.message);
+          res.setEncoding('utf8');
+          let rawData = '';
+          res.on('data', chunk => (rawData += chunk));
+          res.on('end', () => {
+            try {
+              resolve(rawData);
+            } catch (e) {
+              console.log(e.message);
+              reject(e);
+            }
+          });
         }
+      )
+      .on('error', e => {
+        console.log(`Got error: ${e.message}`);
+        reject(e);
       });
-    })
-    .on('error', e => {
-      console.log(`Got error: ${e.message}`);
-    });
+  });
 }
+
+const getDeviceFnameFromName = async (sensorType, roomName) => {
+  const rawData = await officeInformationRequest('/devices');
+
+  const parsedData = JSON.parse(rawData);
+
+  return fp.flow(
+    fp.get('result'),
+    fp.filter(data => fp.toLower(data.sensor_type) === sensorType),
+    fp.filter(data => fp.toLower(data.room) === fp.toLower(roomName)),
+    x => x[0].friendly_name,
+    fp.replace(' ', '%20'),
+  )(parsedData);
+};
+
+const getDeviceIDFromName = async (sensorType, roomName) => {
+  const rawData = await officeInformationRequest('/devices');
+
+  const parsedData = JSON.parse(rawData);
+
+  return fp.flow(
+    fp.get('result'),
+    fp.filter(data => fp.toLower(data.sensor_type) === sensorType),
+    fp.filter(data => fp.toLower(data.room) === fp.toLower(roomName)),
+    x => x[0].deviceId,
+    fp.replace(' ', '%20'),
+  )(parsedData);
+};
+
 
 function getOfficeInformationDevice() {
   const self = this;
-  self.attributes.sensor = self.event.request.intent.slots.sensor.value || self.attributes.sensor;
+  self.attributes.sensor =
+    self.event.request.intent.slots.sensor.value || self.attributes.sensor;
 
-  officeInformationRequest('/devices', function (rawData) {
+  officeInformationRequest('/devices', function(rawData) {
     const parsedData = JSON.parse(rawData);
     const dataOutput = fp.flow(
       fp.get('result'),
-      x => console.log(self.attributes.sensor) || x,
-      fp.filter(data => fp.toLower(data.sensor_type)===self.attributes.sensor),
-      fp.map( data => data.room ),
+      fp.filter(
+        data => fp.toLower(data.sensor_type) === self.attributes.sensor
+      ),
+      fp.map(data => data.room)
     )(parsedData);
 
     const GetDevicesMessage = fp.join(', ')(dataOutput);
@@ -69,28 +109,53 @@ function getOfficeInformationDevice() {
   });
 }
 
-function getOfficeInformationTemp() {
-  const self = this;
-  const url = 'temperature?' + 'deviceName=BR%20Temp' + '&type=average';
-  self.attributes.sensor = self.event.request.intent.slots.sensor.value || self.attributes.sensor;
+const getOfficeInformationTemp = async ({ test }) => {
+  const self = test;
+  const friendlyName = await getDeviceFnameFromName(
+    'temperature sensor',
+    self.event.request.intent.slots.room.value
+  );
+  const url = '/temperature?' + `deviceName=${friendlyName}` + '&type=average';
+  const rawData = await officeInformationRequest(url);
+  const parsedData = JSON.parse(rawData);
+  const outputData = fp.forOwn(
+    fp.get('results'),
+    fp.round(2)
+  )(parsedData)
+  self.response
+    .speak(`The temparature in the ${self.event.request.intent.slots.room.value} is ${outputData}`)
+    .listen();
+  self.emit(':responseReady');
+};
 
-  officeInformationRequest(url, function (rawData) {
-    const parsedData = JSON.parse(rawData);
-
-    const GetDevicesMessage = parsedData;
-
-    self.response.speak(`There are these rooms ${GetDevicesMessage}`).listen();
-    self.emit(':responseReady');
-  });
-}
+const getOfficeInformationBussy = async ({ test }) => {
+  const self = test;
+  const friendlyName = await getDeviceIDFromName(
+    'motion sensor',
+    self.event.request.intent.slots.room.value
+  );
+  const url = '/busyness?' + `deviceName=${friendlyName}`;
+  const rawData = await officeInformationRequest(url);
+  const parsedData = JSON.parse(rawData);
+  self.response
+    .speak(`The bussyness of the ${self.event.request.intent.slots.room.value} is ${parsedData.result}`)
+    .listen();
+  self.emit(':responseReady');
+};
 
 const handlers = {
   LaunchRequest: function() {
     this.response.speak('Skill for the Agile Digital Office').listen();
     this.emit(':responseReady');
   },
-  GetDevicesIntent: function() {getOfficeInformationDevice.call(this);},
-  GetTemperatureIntent: function() {getOfficeInformationTemp.call(this);
+  GetDevicesIntent: function() {
+    getOfficeInformationDevice.call(this);
+  },
+  GetTemperatureIntent: function() {
+    getOfficeInformationTemp({ test: this });
+  },
+  GetBussynessIntent: function() {
+    getOfficeInformationBussy({ test: this });
   },
   'AMAZON.HelpIntent': function() {
     const speechOutput = HELP_MESSAGE;

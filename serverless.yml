@@ -44,6 +44,12 @@ custom:
                       type: Room
                     samples:
                      - 'What is the temperature in the {room}'
+                  - name: GetBussynessIntent
+                    slots:
+                    - name: room
+                      type: Room
+                    samples:
+                     - 'What is the bussyness in the {room}'
                   - name: GetDevicesIntent
                     slots:
                     - name: sensor
@@ -55,11 +61,15 @@ custom:
                   - name: Room
                     values:
                       - name:
-                          value: boardroom
+                          value: board room
                       - name:
                           value: kitchenette
-                          synonyms:
-                            - kitchen
+                      - name:
+                          value: middle office
+                      - name:
+                          value: reception
+                      - name:
+                          value: outside
                   - name: Sensor
                     values:
                       - name:
